@@ -12,8 +12,8 @@ const config = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 1000 },
-            debug: true
+            gravity: { y: 1000 }, // Глобальная гравитация
+            debug: true // Включение режима отладки
         }
     },
     scene: [MainScene],
