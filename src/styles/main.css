@@ -1,8 +1,10 @@
 /* src/styles/main.css */
 
-body {
+html, body {
     margin: 0;
     padding: 0;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
 }
 
@@ -10,5 +12,3 @@ body {
     width: 100vw;
     height: 100vh;
 }
-
-/* Добавьте дополнительные стили по необходимости */

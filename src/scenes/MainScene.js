@@ -4,10 +4,11 @@ import Phaser from 'phaser';
 import playerImg from '../assets/images/player.png';
 import platformImg from '../assets/images/platform.png';
 import keyImg from '../assets/images/key.png';
-import backgroundImg from '../assets/images/background.png'; // Импорт фона
+import backgroundImg from '../assets/images/background.png';
+import obstacleImg from '../assets/images/obstacle.png';
 import windowOpenAudio from '../assets/audio/window_open.mp3';
 import buttonClickAudio from '../assets/audio/button_click.mp3';
-import backgroundMusic from '../assets/audio/background-music.mp3'; // Импорт фоновой музыки
+import backgroundMusic from '../assets/audio/background-music.mp3';
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -16,18 +17,19 @@ class MainScene extends Phaser.Scene {
 
     preload() {
         // Загрузка ассетов с помощью импортированных путей
-        this.load.image('background', backgroundImg); // Загрузка фона
         this.load.image('player', playerImg);
         this.load.image('platform', platformImg);
         this.load.image('key', keyImg);
+        this.load.image('background', backgroundImg);
+        this.load.image('obstacle', obstacleImg);
         this.load.audio('window_open', windowOpenAudio);
         this.load.audio('button_click', buttonClickAudio);
-        this.load.audio('background_music', backgroundMusic); // Загрузка фоновой музыки
+        this.load.audio('background_music', backgroundMusic);
     }
 
     create() {
         // Добавление фонового изображения
-        this.add.image(this.scale.width / 2, this.scale.height / 2, 'background').setDisplaySize(this.scale.width, this.scale.height);
+        this.add.image(400, 300, 'background').setScrollFactor(0); // Центрируйте фон
 
         // Воспроизведение фоновой музыки
         this.bgMusic = this.sound.add('background_music', { loop: true, volume: 0.5 });
@@ -70,48 +72,80 @@ class MainScene extends Phaser.Scene {
         // Настройка столкновения игрока с ключами
         this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
 
+        // Создание группы препятствий
+        this.obstacles = this.physics.add.group();
+
+        // Настройка коллизии препятствий с платформами и игроком
+        this.physics.add.collider(this.obstacles, this.platforms);
+        this.physics.add.collider(this.player, this.obstacles, this.hitObstacle, null, this);
+
+        // Создание бесконечного скролла
+        this.cameras.main.startFollow(this.player);
+        this.cameras.main.setBounds(0, 0, Number.MAX_SAFE_INTEGER, 600);
+
         // Счетчик собранных ключей
         this.score = 0;
         this.scoreText = this.add.text(16, 16, 'Счет: 0', { fontSize: '32px', fill: '#000' });
+        this.scoreText.setScrollFactor(0); // Фиксированный счетчик
 
         // Настройка ввода
         this.cursors = this.input.keyboard.createCursorKeys();
-        this.keysInput = this.input.keyboard.addKeys({
-            up: Phaser.Input.Keyboard.KeyCodes.W,
-            left: Phaser.Input.Keyboard.KeyCodes.A,
-            right: Phaser.Input.Keyboard.KeyCodes.D,
-            space: Phaser.Input.Keyboard.KeyCodes.SPACE
-        });
+        this.WKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+        this.AKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+        this.SKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+        this.DKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
 
         // Добавление обработчика касаний для мобильных устройств и мыши
         this.input.on('pointerdown', () => {
             if (this.player.body.touching.down) {
-                this.player.setVelocityY(-600); // Увеличенная скорость прыжка
+                this.jump();
             }
+        });
+
+        // Таймер для спавна препятствий и ключей
+        this.time.addEvent({
+            delay: 2000, // каждые 2 секунды
+            callback: this.spawnObstacle,
+            callbackScope: this,
+            loop: true
+        });
+
+        this.time.addEvent({
+            delay: 3000, // каждые 3 секунды
+            callback: this.spawnKey,
+            callbackScope: this,
+            loop: true
         });
     }
 
     update() {
-        // Движение игрока с помощью стрелок и WSAD
-        if (this.cursors.left.isDown || this.keysInput.left.isDown) {
+        // Движение игрока
+        let movingLeft = this.cursors.left.isDown || this.AKey.isDown;
+        let movingRight = this.cursors.right.isDown || this.DKey.isDown;
+
+        if (movingLeft) {
             this.player.setVelocityX(-300); // Увеличенная скорость движения
+            this.player.flipX = true; // Отразить спрайт
         }
-        else if (this.cursors.right.isDown || this.keysInput.right.isDown) {
+        else if (movingRight) {
             this.player.setVelocityX(300); // Увеличенная скорость движения
+            this.player.flipX = false;
         }
         else {
             this.player.setVelocityX(0);
         }
 
-        // Прыжок с помощью стрелок и W
-        if ((this.cursors.up.isDown || this.keysInput.up.isDown) && this.player.body.touching.down) {
-            this.player.setVelocityY(-600); // Увеличенная скорость прыжка
+        // Прыжок
+        if ((Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.WKey)) && this.player.body.touching.down) {
+            this.jump();
         }
 
-        // Прыжок с помощью пробела
-        if (this.keysInput.space.isDown && this.player.body.touching.down) {
-            this.player.setVelocityY(-600); // Увеличенная скорость прыжка
-        }
+        // Генерация новых платформ по мере движения
+        // Здесь можно добавить логику для создания новых платформ
+    }
+
+    jump() {
+        this.player.setVelocityY(-600); // Увеличенная скорость прыжка
     }
 
     collectKey(player, key) {
@@ -127,6 +161,58 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    hitObstacle(player, obstacle) {
+        // Остановить игру или перезапустить сцену
+        this.physics.pause();
+        this.bgMusic.stop();
+        player.setTint(0xff0000);
+        this.gameOver = true;
+
+        // Отображение окна Game Over
+        let bg = this.add.graphics();
+        bg.fillStyle(0x000000, 0.5);
+        bg.fillRect(this.cameras.main.scrollX, 0, this.cameras.main.width, this.cameras.main.height);
+
+        let container = this.add.container(this.cameras.main.scrollX + this.cameras.main.width / 2, this.cameras.main.height / 2);
+
+        let window = this.add.graphics();
+        window.fillStyle(0xffffff, 1);
+        window.fillRoundedRect(-200, -150, 400, 300, 20);
+
+        let infoText = this.add.text(0, -50, 'Game Over!\nНажмите чтобы перезапустить.', {
+            fontSize: '24px',
+            fill: '#000',
+            align: 'center'
+        });
+        infoText.setOrigin(0.5);
+
+        let button = this.add.text(0, 100, 'Перезапустить', {
+            fontSize: '20px',
+            fill: '#ffffff',
+            backgroundColor: '#ff0000',
+            padding: { x: 20, y: 10 }
+        });
+        button.setOrigin(0.5);
+        button.setInteractive({ useHandCursor: true });
+
+        button.on('pointerdown', () => {
+            this.sound.play('button_click');
+            bg.destroy();
+            container.destroy();
+            this.scene.restart();
+            this.bgMusic.play();
+        });
+
+        container.add([window, infoText, button]);
+        container.alpha = 0;
+        this.tweens.add({
+            targets: container,
+            alpha: 1,
+            duration: 500,
+            ease: 'Power2'
+        });
+    }
+
     showInfoWindow() {
         // Воспроизведение звука открытия окна
         this.sound.play('window_open');
@@ -134,10 +220,10 @@ class MainScene extends Phaser.Scene {
         // Создание затемнённого фона
         let bg = this.add.graphics();
         bg.fillStyle(0x000000, 0.5);
-        bg.fillRect(0, 0, this.scale.width, this.scale.height);
+        bg.fillRect(this.cameras.main.scrollX, 0, this.cameras.main.width, this.cameras.main.height);
 
         // Создание контейнера для окна
-        let container = this.add.container(this.scale.width / 2, this.scale.height / 2);
+        let container = this.add.container(this.cameras.main.scrollX + this.cameras.main.width / 2, this.cameras.main.height / 2);
 
         // Создание окна
         let window = this.add.graphics();
@@ -173,6 +259,7 @@ class MainScene extends Phaser.Scene {
 
             // Перезапуск уровня или переход на другую сцену
             this.scene.restart();
+            this.bgMusic.play();
         });
 
         // Добавление элементов в контейнер
@@ -186,6 +273,21 @@ class MainScene extends Phaser.Scene {
             duration: 500,
             ease: 'Power2'
         });
+    }
+
+    spawnObstacle() {
+        // Создайте препятствие на последнем уровне платформ
+        let obstacle = this.obstacles.create(this.player.x + 800, 500, 'obstacle');
+        obstacle.setVelocityX(-300); // Двигается вместе с игроком
+        obstacle.setImmovable(true);
+        obstacle.body.allowGravity = false;
+    }
+
+    spawnKey() {
+        // Создайте ключ на новой платформе
+        let key = this.keys.create(this.player.x + 800, 400, 'key');
+        key.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+        key.setScale(0.5);
     }
 }
 
