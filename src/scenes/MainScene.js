@@ -1,6 +1,13 @@
 // src/scenes/MainScene.js
 
 import Phaser from 'phaser';
+import playerImg from '../assets/images/player.png';
+import platformImg from '../assets/images/platform.png';
+import keyImg from '../assets/images/key.png';
+import backgroundImg from '../assets/images/background.png'; // Импорт фона
+import windowOpenAudio from '../assets/audio/window_open.mp3';
+import buttonClickAudio from '../assets/audio/button_click.mp3';
+import backgroundMusic from '../assets/audio/background-music.mp3'; // Импорт фоновой музыки
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -8,21 +15,32 @@ class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        // Загрузка ассетов
-        this.load.image('player', '../assets/images/player.png');
-        this.load.image('platform', '../assets/images/platform.png');
-        this.load.image('key', '../assets/images/key.png');
-        this.load.audio('window_open', '../assets/audio/window_open.mp3');
-        this.load.audio('button_click', '../assets/audio/button_click.mp3');
+        // Загрузка ассетов с помощью импортированных путей
+        this.load.image('background', backgroundImg); // Загрузка фона
+        this.load.image('player', playerImg);
+        this.load.image('platform', platformImg);
+        this.load.image('key', keyImg);
+        this.load.audio('window_open', windowOpenAudio);
+        this.load.audio('button_click', buttonClickAudio);
+        this.load.audio('background_music', backgroundMusic); // Загрузка фоновой музыки
     }
 
     create() {
+        // Добавление фонового изображения
+        this.add.image(this.scale.width / 2, this.scale.height / 2, 'background').setDisplaySize(this.scale.width, this.scale.height);
+
+        // Воспроизведение фоновой музыки
+        this.bgMusic = this.sound.add('background_music', { loop: true, volume: 0.5 });
+        this.bgMusic.play();
+
         // Создание платформ
         this.platforms = this.physics.add.staticGroup();
-        this.platforms.create(400, 568, 'platform').setScale(2).refreshBody();
-        this.platforms.create(600, 400, 'platform');
-        this.platforms.create(50, 250, 'platform');
-        this.platforms.create(750, 220, 'platform');
+        // Увеличение платформ на 50%
+        const platformScale = 1.5;
+        this.platforms.create(400, 568, 'platform').setScale(platformScale).refreshBody();
+        this.platforms.create(600, 400, 'platform').setScale(platformScale).refreshBody();
+        this.platforms.create(50, 250, 'platform').setScale(platformScale).refreshBody();
+        this.platforms.create(750, 220, 'platform').setScale(platformScale).refreshBody();
 
         // Создание игрока
         this.player = this.physics.add.sprite(100, 450, 'player');
@@ -42,6 +60,8 @@ class MainScene extends Phaser.Scene {
 
         this.keys.children.iterate(function (child) {
             child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+            // Сделать ключи меньше
+            child.setScale(0.5);
         });
 
         // Настройка коллизии ключей с платформами
@@ -56,30 +76,41 @@ class MainScene extends Phaser.Scene {
 
         // Настройка ввода
         this.cursors = this.input.keyboard.createCursorKeys();
+        this.keysInput = this.input.keyboard.addKeys({
+            up: Phaser.Input.Keyboard.KeyCodes.W,
+            left: Phaser.Input.Keyboard.KeyCodes.A,
+            right: Phaser.Input.Keyboard.KeyCodes.D,
+            space: Phaser.Input.Keyboard.KeyCodes.SPACE
+        });
 
-        // Добавление обработчика касаний для мобильных устройств
+        // Добавление обработчика касаний для мобильных устройств и мыши
         this.input.on('pointerdown', () => {
             if (this.player.body.touching.down) {
-                this.player.setVelocityY(-500);
+                this.player.setVelocityY(-600); // Увеличенная скорость прыжка
             }
         });
     }
 
     update() {
-        // Движение игрока
-        if (this.cursors.left.isDown) {
-            this.player.setVelocityX(-160);
+        // Движение игрока с помощью стрелок и WSAD
+        if (this.cursors.left.isDown || this.keysInput.left.isDown) {
+            this.player.setVelocityX(-300); // Увеличенная скорость движения
         }
-        else if (this.cursors.right.isDown) {
-            this.player.setVelocityX(160);
+        else if (this.cursors.right.isDown || this.keysInput.right.isDown) {
+            this.player.setVelocityX(300); // Увеличенная скорость движения
         }
         else {
             this.player.setVelocityX(0);
         }
 
-        // Прыжок
-        if (this.cursors.up.isDown && this.player.body.touching.down) {
-            this.player.setVelocityY(-500);
+        // Прыжок с помощью стрелок и W
+        if ((this.cursors.up.isDown || this.keysInput.up.isDown) && this.player.body.touching.down) {
+            this.player.setVelocityY(-600); // Увеличенная скорость прыжка
+        }
+
+        // Прыжок с помощью пробела
+        if (this.keysInput.space.isDown && this.player.body.touching.down) {
+            this.player.setVelocityY(-600); // Увеличенная скорость прыжка
         }
     }
 

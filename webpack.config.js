@@ -4,11 +4,12 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
-    entry: './src/main.js', // Убедитесь, что этот путь корректен
+    entry: './src/main.js', // Точка входа
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist'),
         clean: true, // Очистка папки dist перед сборкой
+        publicPath: './', // Обеспечивает корректные пути к ассетам
     },
     module: {
         rules: [
@@ -29,10 +30,16 @@ module.exports = {
             {
                 test: /\.(png|svg|jpg|jpeg|gif)$/i,
                 type: 'asset/resource', // Обработка изображений
+                generator: {
+                    filename: 'assets/images/[name][ext]', // Путь сохранения изображений
+                },
             },
             {
                 test: /\.(mp3|wav)$/i,
                 type: 'asset/resource', // Обработка аудио
+                generator: {
+                    filename: 'assets/audio/[name][ext]', // Путь сохранения аудио
+                },
             },
         ],
     },

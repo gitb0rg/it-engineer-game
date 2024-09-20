@@ -6,8 +6,8 @@ import './styles/main.css';
 
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: window.innerWidth,
+    height: window.innerHeight,
     parent: 'game-container',
     physics: {
         default: 'arcade',
@@ -16,7 +16,16 @@ const config = {
             debug: false
         }
     },
-    scene: [MainScene]
+    scene: [MainScene],
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    }
 };
 
 const game = new Phaser.Game(config);
+
+// Обработчик изменения размера окна
+window.addEventListener('resize', () => {
+    game.scale.resize(window.innerWidth, window.innerHeight);
+});
