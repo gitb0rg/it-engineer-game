@@ -33,8 +33,7 @@ class MainScene extends Phaser.Scene {
         const gameHeight = this.scale.height;
 
         // Добавление фонового tileSprite для повторяющегося фона по горизонтали
-        this.background = this.add.tileSprite(0, 0, gameWidth, gameHeight, 'background').setOrigin(0, 0);
-        this.background.setDisplaySize(gameWidth, gameHeight); // Растягивание по вертикали
+        this.background = this.add.tileSprite(0, 0, gameWidth * 10, gameHeight, 'background').setOrigin(0, 0);
         this.background.setDepth(-1); // Убедитесь, что фон находится позади остальных элементов
 
         // Воспроизведение фоновой музыки
@@ -62,12 +61,8 @@ class MainScene extends Phaser.Scene {
 
         // Настройка камеры для следования за игроком после достижения 60% экрана вправо
         this.cameraStartX = 0.6 * gameWidth;
-        this.cameras.main.startFollow(this.player, true, 0.05, 0.05);
         this.cameras.main.setBounds(0, 0, Number.MAX_SAFE_INTEGER, gameHeight);
-
-        // Отключаем автоматическое следование камеры до достижения порога
-        this.cameras.main.stopFollow();
-        this.cameraFollowing = false;
+        this.cameraFollowing = false; // Флаг для отслеживания состояния камеры
 
         // Счетчик очков
         this.score = 0;
@@ -147,7 +142,7 @@ class MainScene extends Phaser.Scene {
         this.background.tilePositionX = this.cameras.main.scrollX * 0.5;
 
         // Управление камерой: начать следовать за игроком, когда он достигнет 60% экрана вправо
-        if (!this.cameraFollowing && this.player.x > this.cameraStartX) {
+        if (!this.cameraFollowing && this.player.x > this.cameraStartX + this.cameras.main.scrollX) {
             this.cameras.main.startFollow(this.player, true, 0.05, 0.05);
             this.cameraFollowing = true;
         }
@@ -171,6 +166,9 @@ class MainScene extends Phaser.Scene {
 
         // Воспроизведение звука сбора ключа
         this.sound.play('window_open');
+
+        // Остановка фоновой музыки при открытии окна резюме
+        this.bgMusic.pause();
 
         // Отображение сообщения о резюме
         this.showResumeMessage();
