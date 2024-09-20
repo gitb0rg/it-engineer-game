@@ -1,0 +1,27 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>IT Engineer Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Отключаем прокрутку */
+            background: #000; /* Черный фон для контраста */
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+    <!-- Подключение Phaser через CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+</head>
+<body>
+    <div id="game-container"></div>
+    <!-- HtmlWebpackPlugin автоматически вставит <script> тег для бандлов -->
+</body>
+</html>
