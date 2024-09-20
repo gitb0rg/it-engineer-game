@@ -9,6 +9,7 @@ import obstacleImg from '../assets/images/obstacle.png';
 import windowOpenAudio from '../assets/audio/window_open.mp3';
 import buttonClickAudio from '../assets/audio/button_click.mp3';
 import backgroundMusic from '../assets/audio/background-music.mp3';
+import resumeData from '../data/resumeData'; // Новый файл с резюме
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -28,8 +29,11 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
+        const gameWidth = this.scale.width;
+        const gameHeight = this.scale.height;
+
         // Добавление фонового изображения как tileSprite для параллакса
-        this.background = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'background').setOrigin(0, 0);
+        this.background = this.add.tileSprite(0, 0, gameWidth, gameHeight, 'background').setOrigin(0, 0);
         this.background.setScrollFactor(0); // Фиксированный фон
 
         // Воспроизведение фоновой музыки
@@ -42,12 +46,12 @@ class MainScene extends Phaser.Scene {
         this.keys = this.physics.add.group();
 
         // Создание начальных платформ
-        this.createInitialPlatforms();
+        this.createInitialPlatforms(gameWidth, gameHeight);
 
         // Создание игрока
-        this.player = this.physics.add.sprite(100, 450, 'player');
+        this.player = this.physics.add.sprite(100, gameHeight - 150, 'player');
         this.player.setBounce(0.2);
-        this.player.setCollideWorldBounds(true);
+        this.player.setCollideWorldBounds(true); // Предотвращает выход за границы мира
 
         // Настройка коллизии
         this.physics.add.collider(this.player, this.platforms);
@@ -57,7 +61,7 @@ class MainScene extends Phaser.Scene {
 
         // Настройка камеры для следования за игроком
         this.cameras.main.startFollow(this.player, true, 0.05, 0.05);
-        this.cameras.main.setBounds(0, 0, Number.MAX_SAFE_INTEGER, this.scale.height);
+        this.cameras.main.setBounds(0, 0, Number.MAX_SAFE_INTEGER, gameHeight);
 
         // Счетчик очков
         this.score = 0;
@@ -85,6 +89,14 @@ class MainScene extends Phaser.Scene {
 
         // Добавление экранных кнопок для мобильных устройств
         this.createMobileButtons();
+
+        // Обработчик закрытия резюме по нажатию Enter
+        this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+        this.enterKey.on('down', () => {
+            if (this.resumeContainer && this.resumeContainer.active) {
+                this.closeResumeMessage();
+            }
+        });
     }
 
     update() {
@@ -93,15 +105,15 @@ class MainScene extends Phaser.Scene {
         }
 
         // Движение игрока
-        let movingLeft = this.cursors.left.isDown || this.AKey.isDown || this.leftButton.isDown;
-        let movingRight = this.cursors.right.isDown || this.DKey.isDown || this.rightButton.isDown;
+        let movingLeft = this.cursors.left.isDown || this.AKey.isDown || (this.leftButton && this.leftButton.isDown);
+        let movingRight = this.cursors.right.isDown || this.DKey.isDown || (this.rightButton && this.rightButton.isDown);
 
         if (movingLeft) {
-            this.player.setVelocityX(-300);
+            this.player.setVelocityX(-500); // Увеличена скорость движения влево
             this.player.flipX = true;
         }
         else if (movingRight) {
-            this.player.setVelocityX(300);
+            this.player.setVelocityX(500); // Увеличена скорость движения вправо
             this.player.flipX = false;
         }
         else {
@@ -124,10 +136,13 @@ class MainScene extends Phaser.Scene {
 
         // Динамическое создание новых платформ, препятствий и ключей
         this.checkGeneration();
+
+        // Удаление объектов, ушедших за левую границу экрана
+        this.removeOffscreenObjects();
     }
 
     jump() {
-        this.player.setVelocityY(-600);
+        this.player.setVelocityY(-800); // Увеличена скорость прыжка для более быстрого приземления
         console.log('Jump triggered');
     }
 
@@ -139,6 +154,9 @@ class MainScene extends Phaser.Scene {
 
         // Воспроизведение звука сбора ключа
         this.sound.play('window_open');
+
+        // Отображение сообщения о резюме
+        this.showResumeMessage();
     }
 
     hitObstacle(player, obstacle) {
@@ -172,7 +190,8 @@ class MainScene extends Phaser.Scene {
             fontSize: '20px',
             fill: '#ffffff',
             backgroundColor: '#ff0000',
-            padding: { x: 20, y: 10 }
+            padding: { x: 20, y: 10 },
+            align: 'center'
         });
         button.setOrigin(0.5);
         button.setInteractive({ useHandCursor: true });
@@ -195,14 +214,14 @@ class MainScene extends Phaser.Scene {
         });
     }
 
-    createInitialPlatforms() {
+    createInitialPlatforms(gameWidth, gameHeight) {
         // Создание начальных платформ
         const initialPlatforms = [
-            { x: 400, y: 568, scale: 1.5 },
-            { x: 600, y: 400, scale: 1.5 },
-            { x: 800, y: 300, scale: 1.5 },
-            { x: 1000, y: 400, scale: 1.5 },
-            { x: 1200, y: 500, scale: 1.5 },
+            { x: gameWidth / 2, y: gameHeight - 50, scale: 2 }, // Основная платформа внизу
+            { x: gameWidth + 200, y: gameHeight - 150, scale: 1.5 },
+            { x: gameWidth + 400, y: gameHeight - 250, scale: 1.5 },
+            { x: gameWidth + 600, y: gameHeight - 150, scale: 1.5 },
+            { x: gameWidth + 800, y: gameHeight - 50, scale: 1.5 },
             // Добавляйте дополнительные платформы здесь
         ];
 
@@ -214,11 +233,11 @@ class MainScene extends Phaser.Scene {
     spawnObstaclesAndKeys() {
         // Пример размещения препятствий и ключей на платформах
         const obstacleData = [
-            { platformX: 400, platformY: 568, hasKey: true },
-            { platformX: 600, platformY: 400, hasKey: false },
-            { platformX: 800, platformY: 300, hasKey: true },
-            { platformX: 1000, platformY: 400, hasKey: false },
-            { platformX: 1200, platformY: 500, hasKey: true },
+            { platformX: this.scale.width / 2, platformY: this.scale.height - 50, hasKey: true },
+            { platformX: this.scale.width + 200, platformY: this.scale.height - 150, hasKey: false },
+            { platformX: this.scale.width + 400, platformY: this.scale.height - 250, hasKey: true },
+            { platformX: this.scale.width + 600, platformY: this.scale.height - 150, hasKey: false },
+            { platformX: this.scale.width + 800, platformY: this.scale.height - 50, hasKey: true },
             // Добавляйте дополнительные препятствия здесь
         ];
 
@@ -244,7 +263,7 @@ class MainScene extends Phaser.Scene {
 
         if (lastPlatform && lastPlatform.x < generationThreshold) {
             let nextX = lastPlatform.x + Phaser.Math.Between(200, 400);
-            let nextY = Phaser.Math.Between(200, 500); // Диапазон высот для платформ
+            let nextY = Phaser.Math.Between(this.scale.height - 300, this.scale.height - 50); // Диапазон высот для платформ
 
             this.platforms.create(nextX, nextY, 'platform').setScale(1.5).refreshBody();
             console.log(`New platform created at (${nextX}, ${nextY})`);
@@ -276,38 +295,176 @@ class MainScene extends Phaser.Scene {
         // Создание экранных кнопок для управления на мобильных устройствах
 
         // Кнопка Влево
-        this.leftButton = this.add.image(60, this.scale.height - 60, 'platform') // Используйте подходящий спрайт или создайте свой
-            .setInteractive()
-            .setAlpha(0.5)
-            .setDisplaySize(50, 50)
-            .setTint(0x0000ff); // Синий цвет для кнопки влево
+        this.leftButton = this.add.text(60, this.scale.height - 60, '←', {
+            fontSize: '32px',
+            fill: '#ffffff',
+            backgroundColor: 'rgba(0, 0, 255, 0.5)',
+            padding: { x: 10, y: 10 },
+            align: 'center'
+        })
+        .setInteractive()
+        .setOrigin(0.5)
+        .setDepth(1); // Убедитесь, что кнопки отображаются поверх других элементов
 
         this.leftButton.on('pointerdown', () => {
-            this.player.setVelocityX(-300);
+            this.player.setVelocityX(-500);
             this.player.flipX = true;
         });
 
         this.leftButton.on('pointerup', () => {
-            if (!this.cursors.left.isDown && !this.AKey.isDown) {
+            if (!this.cursors.left.isDown && !this.AKey.isDown && !this.leftButton.isDown) {
                 this.player.setVelocityX(0);
             }
         });
 
         // Кнопка Вправо
-        this.rightButton = this.add.image(this.scale.width - 60, this.scale.height - 60, 'platform') // Используйте подходящий спрайт или создайте свой
-            .setInteractive()
-            .setAlpha(0.5)
-            .setDisplaySize(50, 50)
-            .setTint(0xff0000); // Красный цвет для кнопки вправо
+        this.rightButton = this.add.text(this.scale.width - 60, this.scale.height - 60, '→', {
+            fontSize: '32px',
+            fill: '#ffffff',
+            backgroundColor: 'rgba(255, 0, 0, 0.5)',
+            padding: { x: 10, y: 10 },
+            align: 'center'
+        })
+        .setInteractive()
+        .setOrigin(0.5)
+        .setDepth(1); // Убедитесь, что кнопки отображаются поверх других элементов
 
         this.rightButton.on('pointerdown', () => {
-            this.player.setVelocityX(300);
+            this.player.setVelocityX(500);
             this.player.flipX = false;
         });
 
         this.rightButton.on('pointerup', () => {
-            if (!this.cursors.right.isDown && !this.DKey.isDown) {
+            if (!this.cursors.right.isDown && !this.DKey.isDown && !this.rightButton.isDown) {
                 this.player.setVelocityX(0);
+            }
+        });
+    }
+
+    showResumeMessage() {
+        // Проверяем, существует ли уже сообщение о резюме
+        if (this.resumeContainer) return;
+
+        const gameWidth = this.scale.width;
+        const gameHeight = this.scale.height;
+
+        // Создание контейнера для сообщения о резюме
+        this.resumeContainer = this.add.container(this.cameras.main.worldView.x + gameWidth / 2, this.cameras.main.worldView.y + gameHeight / 2);
+
+        // Затемнённый фон
+        let bg = this.add.graphics();
+        bg.fillStyle(0x000000, 0.7);
+        bg.fillRect(-gameWidth / 2, -gameHeight / 2, gameWidth, gameHeight);
+        this.resumeContainer.add(bg);
+
+        // Окно резюме
+        let windowRect = this.add.graphics();
+        windowRect.fillStyle(0xffffff, 1);
+        windowRect.fillRoundedRect(-300, -200, 600, 400, 20);
+        this.resumeContainer.add(windowRect);
+
+        // Заголовок
+        let resumeText = this.add.text(0, -150, 'Мое Резюме', {
+            fontSize: '32px',
+            fill: '#000',
+            align: 'center'
+        });
+        resumeText.setOrigin(0.5);
+        this.resumeContainer.add(resumeText);
+
+        // Детали резюме
+        let currentResumeIndex = 0;
+        this.displayResumeDetails = () => {
+            if (currentResumeIndex >= resumeData.length) {
+                currentResumeIndex = 0; // Сбросить индекс, если все резюме показаны
+            }
+
+            // Удалить предыдущие детали
+            if (this.resumeDetails) {
+                this.resumeDetails.destroy();
+            }
+
+            this.resumeDetails = this.add.text(0, -50, resumeData[currentResumeIndex], {
+                fontSize: '24px',
+                fill: '#000',
+                align: 'center',
+                wordWrap: { width: 550 }
+            });
+            this.resumeDetails.setOrigin(0.5);
+            this.resumeContainer.add(this.resumeDetails);
+
+            currentResumeIndex++;
+        };
+
+        this.displayResumeDetails();
+
+        // Кнопка Продолжить Игру
+        let button = this.add.text(0, 150, 'Продолжить Игру', {
+            fontSize: '20px',
+            fill: '#ffffff',
+            backgroundColor: '#ff0000',
+            padding: { x: 20, y: 10 },
+            align: 'center'
+        });
+        button.setOrigin(0.5);
+        button.setInteractive({ useHandCursor: true });
+        this.resumeContainer.add(button);
+
+        button.on('pointerdown', () => {
+            this.sound.play('button_click');
+            this.closeResumeMessage();
+        });
+
+        // Добавляем слушатель на клавишу Enter для закрытия сообщения
+        this.enterKey.once('down', () => {
+            this.closeResumeMessage();
+        });
+
+        // Анимация появления сообщения
+        this.resumeContainer.alpha = 0;
+        this.tweens.add({
+            targets: this.resumeContainer,
+            alpha: 1,
+            duration: 500,
+            ease: 'Power2'
+        });
+    }
+
+    closeResumeMessage() {
+        if (!this.resumeContainer) return;
+
+        // Анимация исчезновения сообщения
+        this.tweens.add({
+            targets: this.resumeContainer,
+            alpha: 0,
+            duration: 500,
+            ease: 'Power2',
+            onComplete: () => {
+                this.resumeContainer.destroy();
+                this.resumeContainer = null;
+            }
+        });
+    }
+
+    removeOffscreenObjects() {
+        // Удаление платформ, ушедших за экран слева
+        this.platforms.children.iterate(child => {
+            if (child.x < this.cameras.main.scrollX - 400) { // 400 - запас
+                child.destroy();
+            }
+        });
+
+        // Удаление препятствий, ушедших за экран слева
+        this.obstacles.children.iterate(child => {
+            if (child.x < this.cameras.main.scrollX - 400) {
+                child.destroy();
+            }
+        });
+
+        // Удаление ключей, ушедших за экран слева
+        this.keys.children.iterate(child => {
+            if (child.x < this.cameras.main.scrollX - 400) {
+                child.destroy();
             }
         });
     }
