@@ -13,7 +13,7 @@ const config = {
         default: 'arcade',
         arcade: {
             gravity: { y: 1000 }, // Глобальная гравитация
-            debug: true // Включение режима отладки
+            debug: false // Отключение режима отладки после отладки
         }
     },
     scene: [MainScene],

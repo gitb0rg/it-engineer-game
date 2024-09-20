@@ -11,4 +11,28 @@ html, body {
 #game-container {
     width: 100vw;
     height: 100vh;
+    position: relative;
+}
+
+.left-button, .right-button {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background-color: rgba(0, 0, 255, 0.5); /* Синий для влево */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.right-button {
+    background-color: rgba(255, 0, 0, 0.5); /* Красный для вправо */
+}
+
+.left-button.active, .right-button.active {
+    background-color: rgba(0, 0, 255, 0.8);
+}
+
+.right-button.active {
+    background-color: rgba(255, 0, 0, 0.8);
 }
