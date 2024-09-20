@@ -1,54 +1,49 @@
-// webpack.config.js
 const path = require('path');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
-    entry: './public/main.js',
-    output: {
-        filename: '[name].bundle.js',
-        path: path.resolve(__dirname, 'dist'),
-        publicPath: '/'
-    },
-    mode: 'production',
-    module: {
-        rules: [
-            {
-                test: /\.js$/,
-                exclude: /node_modules/,
-                use: {
-                    loader: 'babel-loader',
-                    options: {
-                        presets: ['@babel/preset-env']
-                    }
-                }
-            },
-            {
-                test: /\.(png|jpg|gif|mp3|webp)$/,
-                type: 'asset/resource',
-                generator: {
-                    filename: 'assets/[name][hash][ext]'
-                }
-            },
-            {
-                test: /\.css$/,
-                use: ['style-loader', 'css-loader']
-            }
-        ]
-    },
-    plugins: [
-        new HtmlWebpackPlugin({
-            template: 'public/index.html',
-            filename: 'index.html',
-            inject: 'body'
-        }),
-        new CopyWebpackPlugin({
-            patterns: [
-                { from: 'public/assets', to: 'assets' }
-            ]
-        })
+  entry: './src/main.js',
+  output: {
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, 'dist'),
+    clean: true, // Очистка папки dist перед сборкой
+  },
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'babel-loader', // Транспиляция кода
+          options: {
+            presets: ['@babel/preset-env'],
+          },
+        },
+      },
+      {
+        test: /\.css$/i,
+        use: ['style-loader', 'css-loader'], // Обработка CSS
+      },
+      {
+        test: /\.(png|svg|jpg|jpeg|gif)$/i,
+        type: 'asset/resource', // Обработка изображений
+      },
+      {
+        test: /\.(mp3|wav)$/i,
+        type: 'asset/resource', // Обработка аудио
+      },
     ],
-    resolve: {
-        extensions: ['.js']
-    }
+  },
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: './public/index.html', // Шаблон HTML
+    }),
+  ],
+  devServer: {
+    static: './dist',
+    hot: true, // Горячая перезагрузка
+  },
+  resolve: {
+    extensions: ['.js'],
+  },
 };
