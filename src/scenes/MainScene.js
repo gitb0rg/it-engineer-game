@@ -32,9 +32,10 @@ class MainScene extends Phaser.Scene {
         const gameWidth = this.scale.width;
         const gameHeight = this.scale.height;
 
-        // Добавление фонового изображения как tileSprite для параллакса
+        // Добавление фонового tileSprite для повторяющегося фона по горизонтали
         this.background = this.add.tileSprite(0, 0, gameWidth, gameHeight, 'background').setOrigin(0, 0);
-        this.background.setScrollFactor(0); // Фиксированный фон
+        this.background.setDisplaySize(gameWidth, gameHeight); // Растягивание по вертикали
+        this.background.setDepth(-1); // Убедитесь, что фон находится позади остальных элементов
 
         // Воспроизведение фоновой музыки
         this.bgMusic = this.sound.add('background_music', { loop: true, volume: 0.5 });
@@ -59,9 +60,14 @@ class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.obstacles, this.hitObstacle, null, this);
         this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
 
-        // Настройка камеры для следования за игроком
+        // Настройка камеры для следования за игроком после достижения 60% экрана вправо
+        this.cameraStartX = 0.6 * gameWidth;
         this.cameras.main.startFollow(this.player, true, 0.05, 0.05);
         this.cameras.main.setBounds(0, 0, Number.MAX_SAFE_INTEGER, gameHeight);
+
+        // Отключаем автоматическое следование камеры до достижения порога
+        this.cameras.main.stopFollow();
+        this.cameraFollowing = false;
 
         // Счетчик очков
         this.score = 0;
@@ -75,11 +81,11 @@ class MainScene extends Phaser.Scene {
         this.SKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
         this.DKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
         this.SpaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE); // Добавление пробела
+        this.DownKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN); // Клавиша вниз
 
         // Обработчик для мыши и касаний
         this.input.on('pointerdown', () => {
-            if (this.player.body.onFloor()) { // Используем onFloor() вместо body.touching.down
-                console.log('Jump via pointer');
+            if (this.player.body.onFloor()) {
                 this.jump();
             }
         });
@@ -109,11 +115,11 @@ class MainScene extends Phaser.Scene {
         let movingRight = this.cursors.right.isDown || this.DKey.isDown || (this.rightButton && this.rightButton.isDown);
 
         if (movingLeft) {
-            this.player.setVelocityX(-500); // Увеличена скорость движения влево
+            this.player.setVelocityX(-600); // Увеличена скорость движения влево
             this.player.flipX = true;
         }
         else if (movingRight) {
-            this.player.setVelocityX(500); // Увеличена скорость движения вправо
+            this.player.setVelocityX(600); // Увеличена скорость движения вправо
             this.player.flipX = false;
         }
         else {
@@ -127,12 +133,24 @@ class MainScene extends Phaser.Scene {
              Phaser.Input.Keyboard.JustDown(this.SpaceKey)) &&
              this.player.body.onFloor()
         ) {
-            console.log('Jump via keyboard');
             this.jump();
+        }
+
+        // Ускоренное приземление при нажатии вниз или 'S'
+        if (Phaser.Input.Keyboard.JustDown(this.cursors.down) || Phaser.Input.Keyboard.JustDown(this.SKey)) {
+            if (!this.player.body.onFloor()) {
+                this.player.setVelocityY(400); // Увеличенная скорость приземления
+            }
         }
 
         // Обновление фона для параллакса
         this.background.tilePositionX = this.cameras.main.scrollX * 0.5;
+
+        // Управление камерой: начать следовать за игроком, когда он достигнет 60% экрана вправо
+        if (!this.cameraFollowing && this.player.x > this.cameraStartX) {
+            this.cameras.main.startFollow(this.player, true, 0.05, 0.05);
+            this.cameraFollowing = true;
+        }
 
         // Динамическое создание новых платформ, препятствий и ключей
         this.checkGeneration();
@@ -143,7 +161,6 @@ class MainScene extends Phaser.Scene {
 
     jump() {
         this.player.setVelocityY(-800); // Увеличена скорость прыжка для более быстрого приземления
-        console.log('Jump triggered');
     }
 
     collectKey(player, key) {
@@ -173,18 +190,21 @@ class MainScene extends Phaser.Scene {
         bg.fillStyle(0x000000, 0.5);
         bg.fillRect(this.cameras.main.scrollX - this.cameras.main.width / 2, 0, this.cameras.main.width, this.cameras.main.height);
 
-        let container = this.add.container(this.cameras.main.scrollX, this.cameras.main.height / 2);
+        let container = this.add.container(this.cameras.main.scrollX + this.cameras.main.width / 2, this.cameras.main.height / 2);
 
         let windowRect = this.add.graphics();
         windowRect.fillStyle(0xffffff, 1);
         windowRect.fillRoundedRect(-200, -150, 400, 300, 20);
+        container.add(windowRect);
 
         let infoText = this.add.text(0, -50, 'Game Over!\nНажмите чтобы перезапустить.', {
             fontSize: '24px',
             fill: '#000',
-            align: 'center'
+            align: 'center',
+            wordWrap: { width: 380 }
         });
         infoText.setOrigin(0.5);
+        container.add(infoText);
 
         let button = this.add.text(0, 100, 'Перезапустить', {
             fontSize: '20px',
@@ -195,6 +215,7 @@ class MainScene extends Phaser.Scene {
         });
         button.setOrigin(0.5);
         button.setInteractive({ useHandCursor: true });
+        container.add(button);
 
         button.on('pointerdown', () => {
             this.sound.play('button_click');
@@ -204,7 +225,9 @@ class MainScene extends Phaser.Scene {
             this.bgMusic.play();
         });
 
-        container.add([windowRect, infoText, button]);
+        // Центрирование контейнера
+        container.setPosition(this.cameras.main.scrollX + this.cameras.main.width / 2, this.cameras.main.height / 2);
+
         container.alpha = 0;
         this.tweens.add({
             targets: container,
@@ -296,18 +319,18 @@ class MainScene extends Phaser.Scene {
 
         // Кнопка Влево
         this.leftButton = this.add.text(60, this.scale.height - 60, '←', {
-            fontSize: '32px',
+            fontSize: '50px', // Увеличен размер шрифта
             fill: '#ffffff',
-            backgroundColor: 'rgba(0, 0, 255, 0.5)',
-            padding: { x: 10, y: 10 },
+            backgroundColor: 'rgba(0, 0, 255, 0.8)', // Более яркий цвет
+            padding: { x: 20, y: 20 }, // Увеличены отступы
             align: 'center'
         })
-        .setInteractive()
+        .setInteractive({ useHandCursor: true })
         .setOrigin(0.5)
         .setDepth(1); // Убедитесь, что кнопки отображаются поверх других элементов
 
         this.leftButton.on('pointerdown', () => {
-            this.player.setVelocityX(-500);
+            this.player.setVelocityX(-600); // Увеличена скорость движения
             this.player.flipX = true;
         });
 
@@ -319,18 +342,18 @@ class MainScene extends Phaser.Scene {
 
         // Кнопка Вправо
         this.rightButton = this.add.text(this.scale.width - 60, this.scale.height - 60, '→', {
-            fontSize: '32px',
+            fontSize: '50px', // Увеличен размер шрифта
             fill: '#ffffff',
-            backgroundColor: 'rgba(255, 0, 0, 0.5)',
-            padding: { x: 10, y: 10 },
+            backgroundColor: 'rgba(255, 0, 0, 0.8)', // Более яркий цвет
+            padding: { x: 20, y: 20 }, // Увеличены отступы
             align: 'center'
         })
-        .setInteractive()
+        .setInteractive({ useHandCursor: true })
         .setOrigin(0.5)
         .setDepth(1); // Убедитесь, что кнопки отображаются поверх других элементов
 
         this.rightButton.on('pointerdown', () => {
-            this.player.setVelocityX(500);
+            this.player.setVelocityX(600); // Увеличена скорость движения
             this.player.flipX = false;
         });
 
@@ -349,7 +372,7 @@ class MainScene extends Phaser.Scene {
         const gameHeight = this.scale.height;
 
         // Создание контейнера для сообщения о резюме
-        this.resumeContainer = this.add.container(this.cameras.main.worldView.x + gameWidth / 2, this.cameras.main.worldView.y + gameHeight / 2);
+        this.resumeContainer = this.add.container(this.cameras.main.scrollX + gameWidth / 2, this.cameras.main.scrollY + gameHeight / 2);
 
         // Затемнённый фон
         let bg = this.add.graphics();
@@ -420,6 +443,9 @@ class MainScene extends Phaser.Scene {
             this.closeResumeMessage();
         });
 
+        // Остановка фоновой музыки при открытии окна
+        this.bgMusic.pause();
+
         // Анимация появления сообщения
         this.resumeContainer.alpha = 0;
         this.tweens.add({
@@ -442,6 +468,10 @@ class MainScene extends Phaser.Scene {
             onComplete: () => {
                 this.resumeContainer.destroy();
                 this.resumeContainer = null;
+                // Возобновление фоновой музыки
+                if (this.bgMusic.paused) {
+                    this.bgMusic.resume();
+                }
             }
         });
     }
