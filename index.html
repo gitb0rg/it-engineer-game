@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IT Journey Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #1a1a1a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        canvas { 
+            display: block; 
+        }
+        #start-screen, #game-over-screen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            border: 2px solid #4CAF50;
+            max-width: 600px;
+            width: 80%;
+        }
+        #info-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 90;
+            font-size: 1.1em;
+            border: 1px solid #4CAF50;
+        }
+        #resume-panel {
+            position: fixed;
+            top: 150px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 90;
+            font-size: 1em;
+            border: 1px solid #4CAF50;
+            max-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .resume-entry {
+            margin-bottom: 10px;
+        }
+        .start-btn {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        .start-btn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+        .highlight {
+            color: #4CAF50;
+        }
+        #message {
+            position: fixed;
+            top: 50px;
+            right: 50px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 95;
+            font-size: 1.2em;
+            border: 1px solid #FF4444;
+            display: none;
+            color: #FF4444;
+        }
+        #fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 99;
+        }
+        /* Стили для кнопок управления */
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            padding: 0 20px;
+            touch-action: none;
+        }
+        .control-btn {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 10px;
+            user-select: none;
+        }
+        .control-btn:active {
+            background: #4CAF50;
+            color: #fff;
+        }
+        #left-right-controls {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="info-panel">
+        ❤️ Lives: <span id="lives" class="highlight">3</span><br>
+        📁 IT Projects: <span id="score" class="highlight">0</span><br>
+        🔑 Keys: <span id="keys" class="highlight">0</span><br>
+        📈 Position: <span id="level" class="highlight">CISO</span>
+    </div>
+    <div id="resume-panel">
+        <h3>📄 My Resume</h3>
+    </div>
+    <div id="message"></div>
+    <canvas id="fireworks"></canvas>
+    <div id="start-screen">
+        <h1>🎮 IT Journey Adventure!</h1>
+        <p>Welcome to IT Journey Adventure!</p>
+        <p>Your goal is to collect as many IT projects as possible and find all keys to build a complete resume.</p>
+        <p>Controls:</p>
+        <ul style="text-align: left; display: inline-block;">
+            <li><strong>← → or A D</strong> - Move</li>
+            <li><strong>Space</strong> - Jump</li>
+            <li><strong>F</strong> - Shoot (after collecting the first key)</li>
+            <li><strong>Touch Controls</strong> - Use on-screen buttons on mobile devices</li>
+        </ul>
+        <button class="start-btn">Start Game</button>
+    </div>
+    <div id="game-over-screen" style="display: none;">
+        <h1>Game Over</h1>
+        <div id="final-resume"></div>
+        <button class="start-btn" onclick="location.reload()">Play Again</button>
+    </div>
+
+    <!-- Добавлены кнопки управления -->
+    <div id="controls" style="display: none;">
+        <div id="left-right-controls">
+            <div id="left-btn" class="control-btn">⬅️</div>
+            <div id="right-btn" class="control-btn">➡️</div>
+        </div>
+        <div id="action-controls">
+            <div id="jump-btn" class="control-btn">⏫</div>
+            <div id="shoot-btn" class="control-btn">🔥</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let gameStarted = false;
+
+        // Определение типа устройства
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const camera = {
+            x: 0,
+            y: 0,
+            width: canvas.width,
+            height: canvas.height,
+            follow: function(player) {
+                this.x = player.x - this.width/3;
+                this.x = Math.max(0, Math.min(this.x, worldWidth - this.width));
+            }
+        };
+
+        const worldWidth = 5000;
+        const worldHeight = canvas.height;
+
+        const gameState = {
+            player: {
+                x: 100,
+                y: 0,
+                width: 40,
+                height: 60,
+                speedX: 0,
+                speedY: 0,
+                jumping: false,
+                canShoot: false,
+                lives: 3,
+                icon: isMobile ? '[You]' : '🧑‍💻'
+            },
+            platforms: [],
+            projects: [],
+            keys: [],
+            enemies: [],
+            bullets: [],
+            backgroundObjects: [],
+            score: 0,
+            keysCollected: 0,
+            gravity: 0.5,
+            gameOver: false,
+            difficulty: 1 // Добавлено для увеличения сложности
+        };
+
+        const resumeInfo = [
+            "2009-2011: CISO at METINVEST - Strengthened cybersecurity for a large workforce.",
+            "2011-2019: CIO at PORTINVEST - Built IT systems from scratch for logistics.",
+            "2019-2022: CIO at CREATIO - Spearheaded cloud migrations and data-driven strategies.",
+            "2022-2024: IT Director at iDeals VDR - Led IT transformations and achieved cost savings.",
+            "2024: Product Manager at Comfi.Ai - Developed cutting-edge fintech products."
+        ];
+
+        const positions = [
+            "CISO",
+            "CIO",
+            "Chief Information Officer",
+            "IT Director",
+            "Product/Project Manager"
+        ];
+
+        gameState.player.y = worldHeight - gameState.player.height - 10;
+
+        const keysPressed = {
+            left: false,
+            right: false,
+            up: false,
+            shoot: false
+        };
+
+        // Управление с клавиатуры
+        window.addEventListener('keydown', (e) => {
+            switch(e.key.toLowerCase()) {
+                case 'arrowleft':
+                case 'a':
+                    keysPressed.left = true;
+                    break;
+                case 'arrowright':
+                case 'd':
+                    keysPressed.right = true;
+                    break;
+                case ' ':
+                    if (!gameState.player.jumping) {
+                        gameState.player.speedY = -15;
+                        gameState.player.jumping = true;
+                    }
+                    break;
+                case 'f':
+                    if (gameState.player.canShoot) {
+                        shootBullet();
+                    }
+                    break;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            switch(e.key.toLowerCase()) {
+                case 'arrowleft':
+                case 'a':
+                    keysPressed.left = false;
+                    break;
+                case 'arrowright':
+                case 'd':
+                    keysPressed.right = false;
+                    break;
+            }
+        });
+
+        // Сенсорное управление
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+        const jumpBtn = document.getElementById('jump-btn');
+        const shootBtn = document.getElementById('shoot-btn');
+
+        function setupTouchControls() {
+            // Отображаем кнопки управления на мобильных устройствах
+            const controlsDiv = document.getElementById('controls');
+            controlsDiv.style.display = 'flex';
+
+            // Левая кнопка
+            leftBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keysPressed.left = true;
+            });
+            leftBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keysPressed.left = false;
+            });
+
+            // Правая кнопка
+            rightBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keysPressed.right = true;
+            });
+            rightBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keysPressed.right = false;
+            });
+
+            // Кнопка прыжка
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (!gameState.player.jumping) {
+                    gameState.player.speedY = -15;
+                    gameState.player.jumping = true;
+                }
+            });
+
+            // Кнопка стрельбы
+            shootBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (gameState.player.canShoot) {
+                    shootBullet();
+                }
+            });
+        }
+
+        function generateLevel() {
+            // Main ground
+            gameState.platforms.push({
+                x: 0,
+                y: worldHeight - 40,
+                width: worldWidth,
+                height: 40
+            });
+
+            // Generate platforms
+            let lastX = 300;
+            let baseY = worldHeight - 150;
+            
+            for (let i = 0; i < 15; i++) {
+                const platformWidth = 200 + Math.random() * 100;
+                const platformGap = 200 + Math.random() * 100;
+                const heightVariation = Math.random() * 100 - 50;
+                
+                gameState.platforms.push({
+                    x: lastX,
+                    y: baseY + heightVariation,
+                    width: platformWidth,
+                    height: 20
+                });
+
+                // Add IT Projects
+                if (Math.random() > 0.3) {
+                    const project = {
+                        x: lastX + platformWidth/2 - 15,
+                        y: baseY + heightVariation - 40,
+                        width: 30,
+                        height: 30,
+                        collected: false,
+                        icon: isMobile ? '[Proj]' : getRandomProjectIcon(),
+                        respawnTime: 0 // Для отслеживания времени регенерации
+                    };
+                    gameState.projects.push(project);
+                }
+
+                lastX += platformWidth + platformGap;
+                baseY = Math.max(150, Math.min(worldHeight - 150, baseY + (Math.random() * 100 - 50)));
+            }
+
+            // Add keys
+            for (let i = 0; i < resumeInfo.length; i++) {
+                gameState.keys.push({
+                    x: 800 + (i * 900),
+                    y: worldHeight - 300 - (Math.random() * 150),
+                    width: 30,
+                    height: 30,
+                    collected: false,
+                    info: resumeInfo[i],
+                    icon: isMobile ? '[Key]' : '🔑'
+                });
+            }
+
+            generateBackgroundObjects();
+        }
+
+        function getRandomProjectIcon() {
+            const icons = ['💾', '🖥️', '📱', '🛰️', '🌐', '🔒', '☁️', '🤖'];
+            return icons[Math.floor(Math.random() * icons.length)];
+        }
+
+        function generateBackgroundObjects() {
+            for (let i = 0; i < 50; i++) {
+                gameState.backgroundObjects.push({
+                    x: Math.random() * worldWidth,
+                    y: Math.random() * worldHeight,
+                    radius: Math.random() * 3 + 1,
+                    speed: Math.random() * 0.2 + 0.1,
+                    color: '#ffffff'
+                });
+            }
+        }
+
+        function addResumeInfo(info) {
+            const resumePanel = document.getElementById('resume-panel');
+            const entry = document.createElement('div');
+            entry.className = 'resume-entry';
+            entry.textContent = info;
+            resumePanel.appendChild(entry);
+        }
+
+        function showMessage(text) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 2000);
+        }
+
+        function shootBullet() {
+            gameState.bullets.push({
+                x: gameState.player.x + gameState.player.width / 2,
+                y: gameState.player.y + gameState.player.height / 2,
+                width: 10,
+                height: 5,
+                speed: 10
+            });
+        }
+
+        function update() {
+            if (!gameStarted) return;
+
+            if (keysPressed.left) {
+                gameState.player.speedX = -8;
+            } else if (keysPressed.right) {
+                gameState.player.speedX = 8;
+            } else {
+                gameState.player.speedX = 0;
+            }
+
+            gameState.player.speedY += gameState.gravity;
+            gameState.player.x += gameState.player.speedX;
+            gameState.player.y += gameState.player.speedY;
+
+            camera.follow(gameState.player);
+
+            // Collision with platforms
+            gameState.platforms.forEach(platform => {
+                if (gameState.player.y + gameState.player.height > platform.y &&
+                    gameState.player.y < platform.y + platform.height &&
+                    gameState.player.x + gameState.player.width > platform.x &&
+                    gameState.player.x < platform.x + platform.width) {
+                    
+                    if (gameState.player.speedY > 0) {
+                        gameState.player.y = platform.y - gameState.player.height;
+                        gameState.player.speedY = 0;
+                        gameState.player.jumping = false;
+                    }
+                }
+            });
+
+            // Collect IT Projects
+            gameState.projects.forEach(project => {
+                if (!project.collected &&
+                    gameState.player.x < project.x + project.width &&
+                    gameState.player.x + gameState.player.width > project.x &&
+                    gameState.player.y < project.y + project.height &&
+                    gameState.player.y + gameState.player.height > project.y) {
+                    
+                    project.collected = true;
+                    project.respawnTime = Date.now() + 10000; // Регенерация через 10 секунд
+
+                    // Increase score by random number between 10 and 20
+                    const projectPoints = Math.floor(10 + Math.random() * 11); // 10 to 20 inclusive
+                    gameState.score += projectPoints;
+
+                    document.getElementById('score').textContent = gameState.score;
+                    updateLevel();
+
+                    // Увеличение сложности
+                    gameState.difficulty++;
+                    increaseDifficulty();
+                }
+
+                // Регенерация проектов
+                if (project.collected && Date.now() > project.respawnTime) {
+                    project.collected = false;
+                }
+            });
+
+            // Collect keys
+            gameState.keys.forEach(key => {
+                if (!key.collected &&
+                    gameState.player.x < key.x + key.width &&
+                    gameState.player.x + gameState.player.width > key.x &&
+                    gameState.player.y < key.y + key.height &&
+                    gameState.player.y + gameState.player.height > key.y) {
+                    
+                    key.collected = true;
+                    gameState.keysCollected++;
+                    document.getElementById('keys').textContent = gameState.keysCollected;
+                    addResumeInfo(key.info);
+                    gameState.player.canShoot = true;
+                    spawnEnemies();
+
+                    // Update Position
+                    updatePosition();
+                }
+            });
+
+            // Check if all keys are collected
+            if (gameState.keysCollected === resumeInfo.length && !gameState.gameOver) {
+                gameState.gameOver = true;
+                endGame();
+            }
+
+            // Update bullets
+            gameState.bullets.forEach((bullet, index) => {
+                bullet.x += bullet.speed;
+                if (bullet.x > gameState.player.x + camera.width) {
+                    gameState.bullets.splice(index, 1);
+                }
+            });
+
+            // Update enemies
+            gameState.enemies.forEach((enemy, index) => {
+                // Enemy movement
+                enemy.x -= enemy.speed;
+
+                // Collision with bullets
+                gameState.bullets.forEach((bullet, bIndex) => {
+                    if (bullet.x < enemy.x + enemy.width &&
+                        bullet.x + bullet.width > enemy.x &&
+                        bullet.y < enemy.y + enemy.height &&
+                        bullet.y + bullet.height > enemy.y) {
+                        
+                        gameState.enemies.splice(index, 1);
+                        gameState.bullets.splice(bIndex, 1);
+                    }
+                });
+
+                // Collision with player
+                if (gameState.player.x < enemy.x + enemy.width &&
+                    gameState.player.x + gameState.player.width > enemy.x &&
+                    gameState.player.y < enemy.y + enemy.height &&
+                    gameState.player.y + gameState.player.height > enemy.y) {
+                    
+                    gameState.enemies.splice(index, 1);
+                    gameState.player.lives--;
+                    document.getElementById('lives').textContent = gameState.player.lives;
+                    showMessage('You missed a bug!');
+                    if (gameState.player.lives <= 0) {
+                        gameState.gameOver = true;
+                        endGame();
+                    }
+                }
+            });
+
+            gameState.player.x = Math.max(0, Math.min(gameState.player.x, worldWidth - gameState.player.width));
+            
+            if (gameState.player.y + gameState.player.height > worldHeight) {
+                gameState.player.y = worldHeight - gameState.player.height;
+                gameState.player.speedY = 0;
+                gameState.player.jumping = false;
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+
+            // Draw parallax background
+            gameState.backgroundObjects.forEach(obj => {
+                const parallaxX = obj.x - camera.x * obj.speed;
+                const parallaxY = obj.y;
+
+                ctx.fillStyle = obj.color;
+                ctx.beginPath();
+                ctx.arc(parallaxX, parallaxY, obj.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw gradient overlay
+            const gradient = ctx.createLinearGradient(camera.x, 0, camera.x, canvas.height);
+            gradient.addColorStop(0, 'rgba(26, 26, 26, 0.5)');
+            gradient.addColorStop(1, 'rgba(42, 42, 42, 0.5)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(camera.x, 0, canvas.width, canvas.height);
+
+            // Draw platforms
+            gameState.platforms.forEach(platform => {
+                if (platform.x + platform.width > camera.x && 
+                    platform.x < camera.x + camera.width) {
+                    const platformGradient = ctx.createLinearGradient(platform.x, platform.y, platform.x, platform.y + platform.height);
+                    platformGradient.addColorStop(0, '#4CAF50');
+                    platformGradient.addColorStop(1, '#45a049');
+                    ctx.fillStyle = platformGradient;
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                }
+            });
+
+            // Устанавливаем шрифт
+            ctx.font = '30px sans-serif';
+            ctx.fillStyle = '#ffffff';
+
+            // Draw IT Projects
+            gameState.projects.forEach(project => {
+                if (!project.collected && 
+                    project.x + project.width > camera.x && 
+                    project.x < camera.x + camera.width) {
+                    ctx.fillText(project.icon, project.x, project.y + project.height);
+                }
+            });
+
+            // Draw keys
+            gameState.keys.forEach(key => {
+                if (!key.collected && 
+                    key.x + key.width > camera.x && 
+                    key.x < camera.x + camera.width) {
+                    ctx.fillText(key.icon, key.x, key.y + key.height);
+                }
+            });
+
+            // Draw enemies
+            gameState.enemies.forEach(enemy => {
+                if (enemy.x + enemy.width > camera.x && 
+                    enemy.x < camera.x + camera.width) {
+                    const enemyIcon = isMobile ? '[Bug]' : '👾';
+                    ctx.fillText(enemyIcon, enemy.x, enemy.y + enemy.height);
+                }
+            });
+
+            // Draw bullets
+            gameState.bullets.forEach(bullet => {
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+
+            // Draw player
+            ctx.font = '40px sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(gameState.player.icon, gameState.player.x, gameState.player.y + gameState.player.height);
+
+            ctx.restore();
+        }
+
+        function updateLevel() {
+            // Уровень больше не обновляется на основе счета
+            // Обновление позиции происходит в updatePosition()
+        }
+
+        function updatePosition() {
+            const currentPosition = positions[Math.min(gameState.keysCollected - 1, positions.length - 1)];
+            document.getElementById('level').textContent = currentPosition;
+        }
+
+        function spawnEnemies() {
+            // Добавляем врагов после сбора ключа
+            for (let i = 0; i < 5 * gameState.difficulty; i++) {
+                gameState.enemies.push({
+                    x: gameState.player.x + 800 + Math.random() * 1000,
+                    y: worldHeight - 100 - Math.random() * 200,
+                    width: 40,
+                    height: 60,
+                    speed: (2 + Math.random() * 3) * (1 + gameState.difficulty * 0.1)
+                });
+            }
+        }
+
+        function increaseDifficulty() {
+            // Увеличиваем скорость существующих врагов
+            gameState.enemies.forEach(enemy => {
+                enemy.speed *= 1.05;
+            });
+
+            // Спавним новых врагов
+            for (let i = 0; i < gameState.difficulty; i++) {
+                gameState.enemies.push({
+                    x: gameState.player.x + 800 + Math.random() * 1000,
+                    y: worldHeight - 100 - Math.random() * 200,
+                    width: 40,
+                    height: 60,
+                    speed: (2 + Math.random() * 3) * (1 + gameState.difficulty * 0.1)
+                });
+            }
+        }
+
+        function endGame() {
+            document.getElementById('game-over-screen').style.display = 'block';
+            const finalResume = document.getElementById('final-resume');
+            finalResume.innerHTML = '<h3>Vasyl Azhymov Resume</h3>';
+            resumeInfo.forEach((info, index) => {
+                if (index < gameState.keysCollected) {
+                    const entry = document.createElement('div');
+                    entry.className = 'resume-entry';
+                    entry.textContent = info;
+                    finalResume.appendChild(entry);
+                }
+            });
+
+            if (gameState.keysCollected === resumeInfo.length) {
+                finalResume.innerHTML += '<p>Congratulations! You have built a complete resume!</p>';
+                finalResume.innerHTML += '<p><a href="https://bit.ly/m/Azhymov" target="_blank">Open Full Resume</a></p>';
+                startFireworks();
+            }
+        }
+
+        // Fireworks function
+        function startFireworks() {
+            const fireworksCanvas = document.getElementById('fireworks');
+            fireworksCanvas.width = canvas.width;
+            fireworksCanvas.height = canvas.height;
+            const fCtx = fireworksCanvas.getContext('2d');
+            let particles = [];
+
+            function createFirework() {
+                const x = Math.random() * fireworksCanvas.width;
+                const y = Math.random() * fireworksCanvas.height / 2;
+                const count = 100;
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x: x,
+                        y: y,
+                        speedX: Math.cos((Math.PI * 2 / count) * i) * Math.random() * 5,
+                        speedY: Math.sin((Math.PI * 2 / count) * i) * Math.random() * 5,
+                        alpha: 1
+                    });
+                }
+            }
+
+            function updateFireworks() {
+                fCtx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+                particles.forEach((p, index) => {
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    p.alpha -= 0.02;
+                    if (p.alpha <= 0) {
+                        particles.splice(index, 1);
+                    }
+                });
+            }
+
+            function renderFireworks() {
+                particles.forEach(p => {
+                    fCtx.fillStyle = 'rgba(255, 255, 255,' + p.alpha + ')';
+                    fCtx.beginPath();
+                    fCtx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                    fCtx.fill();
+                });
+            }
+
+            function fireworksLoop() {
+                updateFireworks();
+                renderFireworks();
+                if (particles.length > 0) {
+                    requestAnimationFrame(fireworksLoop);
+                } else {
+                    // Create a new firework after a pause
+                    setTimeout(createFirework, 500);
+                    setTimeout(fireworksLoop, 500);
+                }
+            }
+
+            createFirework();
+            fireworksLoop();
+        }
+
+        // Start game button click event
+        document.querySelector('.start-btn').addEventListener('click', () => {
+            document.getElementById('start-screen').style.display = 'none';
+            gameStarted = true;
+            generateLevel();
+            if (isMobile) {
+                setupTouchControls(); // Инициализация сенсорных кнопок
+            }
+            gameLoop();
+        });
+
+        // Game loop implementation
+        function gameLoop() {
+            if (!gameState.gameOver) {
+                update();
+                render();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>
